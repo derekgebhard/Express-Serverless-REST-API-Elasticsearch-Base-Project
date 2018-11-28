@@ -1,0 +1,67 @@
+# serverless.yml
+
+service: ExpressServerlessRESTAPI
+
+plugins:
+  - serverless-offline
+  - serverless-plugin-warmup
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  region: us-east-1
+  stage: ${opt:stage, self:custom.defaultStage}
+  profile: ${self:custom.profiles.${self:provider.stage}}
+  logRetentionInDays: ${self:custom.logRetentionInDays.${self:provider.stage}}
+  environment:
+    LOG_LEVEL: ${self:custom.logLevels.${self:provider.stage}}
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'lambda:InvokeFunction'
+      Resource:
+      - Fn::Join:
+        - ':'
+        - - arn:aws:lambda
+          - Ref: AWS::Region
+          - Ref: AWS::AccountId
+          - function:${self:service}-${opt:stage, self:provider.stage}-*
+  # Allow for Cloud Formation variables both Sub with resources named AWS and AWS:: variables, see https://serverless.com/framework/docs/providers/aws/guide/variables#using-custom-variable-syntax
+  variableSyntax: "\\${(?!AWS)([ :a-zA-Z0-9._,\\-\\/\\(\\)]+?)}"
+
+custom:
+  defaultStage: dev
+  profiles:
+    dev: devo
+    gamma: gamma
+    prod: prod
+  logRetentionInDays:
+    dev: 3
+    gamma: 5
+    prod: 30
+  logLevels:
+    dev: debug
+    gamma: info
+    prod: info
+  warmup:
+    default: prod
+    prewarm: prod
+
+functions:
+  app:
+    handler: src/server.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
+
+package: # Optional deployment packaging configuration
+  exclude: # Specify the directories and files which should be included in the deployment package
+    - .git/**
+    - coverage/**
+    - integrationTests/**
+    - unitTests/**
+
+resources:  # CloudFormation template syntax
+  - Conditions:
+      IsProd: !Equals [ "${self:provider.stage}", "prod" ]
+  - ${file(resources/cloudwatch-alarms-dashboards.yml)}

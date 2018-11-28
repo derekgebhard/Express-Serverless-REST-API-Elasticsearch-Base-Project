@@ -1,0 +1,322 @@
+Resources:
+  # How Alarm Notifications Get Delivered to You
+  AWSAlarmNotification:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription: # Can change to SMS. I use Gmail fwd to carrier email SMS address to save cost (ex: *@messaging.sprintpcs.com)
+        - Protocol: email
+          Endpoint: "{{resolve:ssm:AlarmEmail:1}}" # Stored in AWS System Manager Parameter Store to prevent putting in Git repo
+
+  # Alarm on unexpectedly high volume
+  AWSHighVolumeAlarm:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: HighVolume
+      AlarmDescription: Alert us to investigate unexpected high volume given costs may be significant
+      Namespace: AWS/ApiGateway
+      MetricName: Count
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
+        - Name: Stage
+          Value: ${self:provider.stage}
+      Statistic: Sum
+      Period: '300'
+      EvaluationPeriods: '1'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: '1500' # 15000 is avg of 50 TPS over 5 minutes
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - Ref: AWSAlarmNotification
+
+  # Alarm on high unexpected errors
+  AWSFatalsAlarm:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: Fatals
+      AlarmDescription: Alert us to high number of fatals
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
+        - Name: Stage
+          Value: ${self:provider.stage}
+      Statistic: Average
+      Period: '300'
+      EvaluationPeriods: '3'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: '.10' # 10% of requests fail with fatals
+      TreatMissingData: ignore
+      AlarmActions:
+        - Ref: AWSAlarmNotification
+
+  # Alarm on high p50 latency
+  AWSLatencyP50Alarm:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: 'LatencyP50'
+      AlarmDescription: Alert us to high p50 latency
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
+        - Name: Stage
+          Value: ${self:provider.stage}
+      ExtendedStatistic: 'p50'
+      Period: '300'
+      EvaluationPeriods: '3'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: '750' # milliseconds
+      TreatMissingData: ignore
+      EvaluateLowSampleCountPercentile: evaluate
+      AlarmActions:
+        - Ref: AWSAlarmNotification
+
+  # Alarm on high p90 latency
+  AWSLatencyP90Alarm:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: 'LatencyP90'
+      AlarmDescription: Alert us to high p90 latency
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+        - Name: ApiName
+          Value: ${self:provider.stage}-${self:service}
+        - Name: Stage
+          Value: ${self:provider.stage}
+      ExtendedStatistic: 'p90'
+      Period: '300'
+      EvaluationPeriods: '3'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: '1500' # milliseconds
+      TreatMissingData: ignore
+      EvaluateLowSampleCountPercentile: evaluate
+      AlarmActions:
+        - Ref: AWSAlarmNotification
+
+  # Op Dashboard - Latest volume, failure %, latencies, bad requests
+  AWSOperations5minDashboard:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: Ops-5min-${self:service}-${self:provider.stage}
+      DashboardBody: !Sub |
+                      {
+                        "widgets":[
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":0,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "title":"Volume - 5 minute",
+                            "annotations":{
+                              "alarms": [
+                                "${AWSHighVolumeAlarm.Arn}"
+                              ]
+                            }
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":12,
+                          "y":0,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "title":"Unexpected Error % - 5 minute",
+                            "annotations":{
+                              "alarms": [
+                                "${AWSFatalsAlarm.Arn}"
+                              ]
+                            }
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":8,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "title":"Latency (ms) p50 - 5min",
+                            "annotations":{
+                              "alarms": [
+                                "${AWSLatencyP50Alarm.Arn}"
+                              ]
+                            }
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":12,
+                          "y":8,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "title":"Latency (ms) p90 - 5min",
+                            "annotations":{
+                              "alarms": [
+                                "${AWSLatencyP90Alarm.Arn}"
+                              ]
+                            }
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":16,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "4XXError",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":300,
+                            "stat":"Average",
+                            "region":"us-east-1",
+                            "title":"4XX % - 5 minute"
+                         }
+                        }]
+                      }
+
+  # Op Dashboard - Daily volume, failure %, latencies, bad requests
+  AWSOperationsDailyDashboard:
+    Condition: IsProd # Only if you want prod Ops dasbhoard
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: Ops-Daily-${self:service}-${self:provider.stage}
+      DashboardBody: |
+                      {
+                        "widgets":[
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":0,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "Count",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":86400,
+                            "stat":"Sum",
+                            "region":"us-east-1",
+                            "title":"Volume - Daily"
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":12,
+                          "y":0,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "5XXError",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":86400,
+                            "stat":"Average",
+                            "region":"us-east-1",
+                            "title":"Unexpected Error % - Daily"
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":8,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "Latency",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":86400,
+                            "stat":"p50",
+                            "region":"us-east-1",
+                            "title":"Latency (ms) p50 - Daily"
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":12,
+                          "y":8,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "Latency",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":86400,
+                            "stat":"p90",
+                            "region":"us-east-1",
+                            "title":"Latency (ms) p90 - Daily"
+                         }
+                        },
+                        {
+                          "type":"metric",
+                          "x":0,
+                          "y":16,
+                          "width":12,
+                          "height":8,
+                          "properties":{
+                            "metrics":[
+                               [
+                                  "AWS/ApiGateway",
+                                  "4XXError",
+                                  "ApiName",
+                                  "${self:provider.stage}-${self:service}",
+                                  "Stage",
+                                  "${self:provider.stage}"
+                               ]
+                            ],
+                            "period":86400,
+                            "stat":"Average",
+                            "region":"us-east-1",
+                            "title":"4XX % - Daily"
+                         }
+                        }]
+                      }

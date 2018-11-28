@@ -1,0 +1,48 @@
+{
+  "name": "Express-Serverless-REST-API-Base-Project",
+  "version": "1.0.0",
+  "description": "Launch Express REST API Service using Serverless ",
+  "main": "src/server.js",
+  "config": {
+    "localPath": "",
+    "devPath": "",
+    "gammaPath": "",
+    "prodPath": ""
+  },
+  "scripts": {
+    "pretest": "eslint --ignore-path .gitignore .",
+    "test": "jest unitTests/*",
+    "coverage": "jest --collectCoverageFrom=src/**.js --collectCoverageFrom=!src/server.js --coverage unitTests/*",
+    "localIntegrationTests": "SERVER_PATH=$npm_package_config_localPath jest integrationTests/*",
+    "devIntegrationTests": "SERVER_PATH=$npm_package_config_devPath jest integrationTests/*",
+    "gammaIntegrationTests": "SERVER_PATH=$npm_package_config_gammaPath jest integrationTests/*",
+    "prodIntegrationTests": "SERVER_PATH=$npm_package_config_prodPath jest integrationTests/*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project/issues"
+  },
+  "homepage": "https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project#readme",
+  "dependencies": {
+    "express": "^4.16.4",
+    "joi": "^14.1.0",
+    "serverless-http": "^1.8.0",
+    "winston": "^3.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.9.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jest": "^22.0.0",
+    "jest": "^23.6.0",
+    "serverless-offline": "^3.31.3",
+    "serverless-plugin-warmup": "^4.2.0-rc.1",
+    "supertest": "^3.3.0"
+  }
+}
