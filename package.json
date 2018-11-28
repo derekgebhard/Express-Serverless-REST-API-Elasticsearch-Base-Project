@@ -1,10 +1,10 @@
 {
-  "name": "Express-Serverless-REST-API-Base-Project",
+  "name": "Express-Serverless-REST-API-Elasticsearch-Base-Project",
   "version": "1.0.0",
-  "description": "Launch Express REST API Service using Serverless ",
+  "description": "Launch Express REST API Service with Elasticsearch using Serverless ",
   "main": "src/server.js",
   "config": {
-    "localPath": "",
+    "localPath": "http://localhost:3000",
     "devPath": "",
     "gammaPath": "",
     "prodPath": ""
@@ -20,15 +20,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project.git"
+    "url": "git+https://github.com/derekgebhard/Express-Serverless-REST-API-Elasticsearch-Base-Project.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project/issues"
+    "url": "https://github.com/derekgebhard/Express-Serverless-REST-API-Elasticsearch-Base-Project/issues"
   },
-  "homepage": "https://github.com/derekgebhard/Express-Serverless-REST-API-Base-Project#readme",
+  "homepage": "https://github.com/derekgebhard/Express-Serverless-REST-API-Elasticsearch-Base-Project#readme",
   "dependencies": {
     "express": "^4.16.4",
     "joi": "^14.1.0",
